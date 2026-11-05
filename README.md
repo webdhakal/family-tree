@@ -1,21 +1,49 @@
-# Dynamic Centralized Family Tree Platform
+# Kinship — Dynamic Family Tree
 
-Production-oriented specification and reference implementation blueprint for a tenant-isolated Supabase family genealogy platform. This repository is a blueprint, not a deployed or complete application.
+A responsive, tenant-isolated React application backed by Supabase. Each family has one Admin, with Moderators and Members. Includes sign-in/signup/recovery, family onboarding and invitations, interactive ancestor/descendant views, member records and profile claims, reviewed edits, CSV staging and approval, missing-parent resolution, feature settings and global tenant administration.
 
-Start with [the specification](docs/SPECIFICATION.md), then follow [the deployment guide](docs/DEPLOYMENT.md). See [verification and release requirements](docs/VERIFICATION.md) for checks performed and remaining integration work.
+## Run locally
 
-| Deliverable | Reference files |
-|---|---|
-| Tenant, Auth roles, profile privacy, approval queue, RLS, graph integrity | [001_schema.sql](blueprint/supabase/001_schema.sql) |
-| Staged CSV import, two-pass linking, conflicts, private Storage | [002_imports_storage.sql](blueprint/supabase/002_imports_storage.sql) |
-| Exact CSV mapping and validation | [csv.ts](blueprint/shared/csv.ts), [sample CSV](blueprint/examples/family.csv) |
-| Shared SDK calls and conflict state | [api.ts](blueprint/shared/api.ts), [useParentConflict.ts](blueprint/shared/useParentConflict.ts) |
-| Web conflict picker and interactive graph | [ParentConflict.tsx](blueprint/web/ParentConflict.tsx), [FamilyTree.tsx](blueprint/web/FamilyTree.tsx), [TreeScreen.tsx](blueprint/web/TreeScreen.tsx) |
-| Native conflict picker and SVG graph | [ParentConflict.tsx](blueprint/mobile/ParentConflict.tsx), [FamilyTree.tsx](blueprint/mobile/FamilyTree.tsx) |
-| Platform clients and layout | [web client](blueprint/web/client.ts), [mobile client](blueprint/mobile/client.ts), [layout.ts](blueprint/shared/layout.ts) |
-| Optional authenticated Edge API | [parent-candidates](blueprint/supabase/functions/parent-candidates/index.ts) |
-| Free hosting and Android APK configuration | [Vercel](blueprint/web/vercel.json), [Netlify](blueprint/web/netlify.toml), [Expo](blueprint/mobile/eas.json) |
+Requirements: Node.js 24 LTS, npm, and a configured Supabase project.
 
-There is one hosted Supabase project shared by all families, not one Supabase project per family. A creator can create one family. Each family always has one Admin; Moderators and Members are tenant-scoped. An Auth account and a genealogy person are separate identities.
+```bash
+npm ci
+cp apps/web/.env.example apps/web/.env.local
+# Set VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY in that file.
+npm run dev
+```
 
-Free-tier eligibility is conditional on quotas and provider terms. A personal web deployment and Android APK distribution can fit free plans. Standard iOS distribution, unlimited usage, guaranteed uptime, and a blanket zero-cost production promise cannot be supplied by these services. Current limits and primary sources are recorded in the deployment guide.
+The default development port is 5173. If occupied, run `npm run dev -- --port 5175`. The application also provides a browser connection form when public connection variables are missing. Never supply a secret or service-role key to that form or any frontend environment variable.
+
+Apply the SQL files in `supabase/migrations` in filename order to a **fresh** project. The initial migration revokes grants across `public`; do not run it unchanged in an unrelated populated project. Configure Supabase Auth's Site URL and allowed redirects for the actual application origin. Email signup/recovery needs configured SMTP for addresses outside the project's own team. Google sign-in needs the Google provider configured.
+
+```bash
+npm test       # Configuration, CSV and isolated PostgreSQL security scenarios
+npm run check # Strict shared/web TypeScript checks
+npm run build # Production app in apps/web/dist
+```
+
+## Repository layout
+
+- `apps/web`: working Vite/React/Tailwind application.
+- `packages/core`: shared Supabase service calls, CSV parsing, query hooks, graph layout and connection validation.
+- `supabase/migrations`: authoritative application schema and RPCs.
+- `tests`: configuration, CSV and embedded PostgreSQL checks, using Supabase Auth/Storage fixtures.
+- `blueprint`: original native/web reference components, Expo build examples and optional Edge Function.
+- `docs`: architecture, provider deployment guidance and verification requirements.
+
+Native Android/iOS components and EAS configuration remain reference modules under `blueprint/mobile`; an assembled mobile binary has not been built or published by the web deployment.
+
+## Hosting
+
+For Vercel, import this repository, select `apps/web` as the root directory, use the Vite preset, `npm run build` and `dist`. Include workspace files outside the root directory. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` before deployment. The publishable key is public; tenant records are protected by database grants, RLS and authorized RPCs.
+
+The selected GitHub repository is [webdhakal/family-tree](https://github.com/webdhakal/family-tree). See [launch record](docs/LAUNCH.md) for the actual service setup and verification status.
+
+## Architecture and operations
+
+Start with [the specification](docs/SPECIFICATION.md), [the deployment guide](docs/DEPLOYMENT.md), and [verification requirements](docs/VERIFICATION.md). The architecture document includes wider production milestones beyond the current release, including dynamic field registry enforcement, payload retention jobs, aggregate quotas, export/deletion workflows and extended relationship types.
+
+One Supabase project is shared by all families. A creator can create one family; an account can join additional families. Auth accounts are separate from genealogical people. Normal members never write canonical records directly. Contact profiles are private to verified owners and reviewers. Admin responsibility transfers atomically; cross-family ancestry and cycles are rejected.
+
+Free plans have capacity and availability limits. Vercel Hobby is for personal non-commercial use, Supabase Free can pause inactive projects, and standard iOS distribution is outside a blanket zero-cost promise. Monitor quotas and maintain encrypted database and Storage backups before using important family records.

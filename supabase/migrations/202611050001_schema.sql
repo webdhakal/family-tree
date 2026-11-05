@@ -5,6 +5,7 @@ revoke all on schema private from public;
 create table private.super_admins (
   user_id uuid primary key references auth.users(id) on delete restrict
 );
+alter table private.super_admins enable row level security;
 create table public.families (
   id uuid primary key default gen_random_uuid(),
   name text not null check (length(trim(name)) between 1 and 160),
