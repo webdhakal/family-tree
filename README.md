@@ -36,7 +36,7 @@ Native Android/iOS components and EAS configuration remain reference modules und
 
 ## Hosting
 
-For Vercel, import this repository, select `apps/web` as the root directory, use the Vite preset, `npm run build` and `dist`. Include workspace files outside the root directory. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` before deployment. The publishable key is public; tenant records are protected by database grants, RLS and authorized RPCs.
+For Vercel, import this repository and keep the repository root selected. The root `vercel.json` runs `npm run build` and serves `apps/web/dist`. Add `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` before deployment. The publishable key is public; tenant records are protected by database grants, RLS and authorized RPCs.
 
 The selected GitHub repository is [webdhakal/family-tree](https://github.com/webdhakal/family-tree). See [launch record](docs/LAUNCH.md) for the actual service setup and verification status.
 
