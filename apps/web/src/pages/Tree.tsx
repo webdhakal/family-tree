@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { GitBranch, Plus } from 'lucide-react';
 import type { Person } from '../lib';
 import type { WorkspaceProps } from '../components/Shell';
 import { ErrorBox, Loading } from '../components/UI';
@@ -18,9 +18,9 @@ export function Tree(props: WorkspaceProps & { error: unknown; loading: boolean 
   return <div className="page-body tree-page">
     <div className="page-heading">
       <div>
-        <span className="eyebrow">FAMILY EXPLORER</span>
+        <span className="eyebrow"><GitBranch size={14} aria-hidden="true"/> Family explorer</span>
         <h1>Family tree</h1>
-        <p>{props.family.name} · {props.people.length} {props.people.length === 1 ? 'person' : 'people'}</p>
+        <p>{props.people.length} {props.people.length === 1 ? 'person' : 'people'}</p>
       </div>
       <button className="primary" disabled={props.loading || !!props.error} onClick={() => setAdd(true)}><Plus size={17}/> Add a person</button>
     </div>

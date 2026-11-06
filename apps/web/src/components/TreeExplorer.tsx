@@ -94,8 +94,10 @@ export function TreeExplorer<T extends DiagramPerson>({
   const edges = useMemo(() => (layout?.edges ?? []).map(edge => ({
     ...edge,
     type: edge.kind === 'spouse' ? 'straight' : 'smoothstep',
-    ...(edge.kind === 'spouse' ? { sourceHandle: 'spouse-out', targetHandle: 'spouse-in', style: { stroke: '#845985', strokeWidth: 2 } } : {}),
-    ...(edge.kind === 'adopted_child' ? { style: { stroke: '#22796c', strokeDasharray: '5 4', strokeWidth: 2 } } : {}),
+    style: { stroke: '#648575', strokeWidth: 1.5 },
+    ...(edge.kind === 'spouse' ? { sourceHandle: 'spouse-out', targetHandle: 'spouse-in', style: { stroke: '#785582', strokeWidth: 2 } } : {}),
+    ...(edge.kind === 'adopted_child' ? { style: { stroke: '#1b6755', strokeDasharray: '5 4', strokeWidth: 2 } } : {}),
+    labelStyle: { fill: '#18352d', fontSize: 12, fontWeight: 600 },
     label: edge.kind === 'spouse' ? 'Spouse' : edge.kind === 'adopted_child' ? 'Adopted' : edge.kind === 'son' ? 'Son' : edge.kind === 'daughter' ? 'Daughter' : undefined,
   })), [layout]);
 
@@ -103,7 +105,7 @@ export function TreeExplorer<T extends DiagramPerson>({
 
   return <dialog ref={dialog} className="tree-panel explorer explorer-dialog" aria-label="Family diagram"
     onCancel={event => { event.preventDefault(); setExpanded(false); }}>
-    {expanded && <div className="fullscreen-heading"><h2>Family diagram</h2></div>}
+    <div className="explorer-title"><h2>Family diagram</h2><span className="badge">{list ? 'List view' : expanded ? 'Full screen' : 'Tree view'}</span></div>
     <div className="explorer-tools">
       <label>Search by name
         <span className="explorer-search"><Search size={17} aria-hidden="true"/><input type="search" placeholder="Find a person" value={name} onChange={event => setName(event.target.value)}/></span>
@@ -175,10 +177,14 @@ export function TreeExplorer<T extends DiagramPerson>({
           nodesDraggable={false} nodesConnectable={false} onlyRenderVisibleElements zoomOnScroll={false}
           onNodeClick={(_, node) => { const person = indexed.byId.get(node.id); if (person) openPerson(person); }}>
           <FitDiagram layoutKey={layout} expanded={expanded}/>
-          <Background color="#bfced4" gap={22} size={1}/>
+          <Background color="#c5d7c8" gap={22} size={1}/>
           <Controls showInteractive={false}/>
         </ReactFlow></ReactFlowProvider>}
     </div>
-    <footer className="tree-footer">Generation 1 starts with the earliest recorded ancestors. Spouses share a row. Adoptive links are dashed.</footer>
+    <footer className="tree-footer" aria-label="Diagram legend">
+      <span className="tree-legend">Parent and child</span>
+      <span className="tree-legend spouse">Spouse</span>
+      <span className="tree-legend adoption">Adopted child</span>
+    </footer>
   </dialog>;
 }

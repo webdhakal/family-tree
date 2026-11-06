@@ -1,22 +1,53 @@
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { relatedIds, relationshipLabels, type Relationship, type RelationshipKind } from '@family-tree/core/relationships';
 import { genderOptions } from '@family-tree/core/gender';
 import { useQuery } from '@tanstack/react-query';
-import { Plus, Search, MapPin, UserCheck, Pencil, GitBranch } from 'lucide-react';
+import { ChevronRight, Plus, Search, MapPin, UserCheck, Pencil, GitBranch } from 'lucide-react';
 import type { WorkspaceProps } from '../components/Shell';
 import { db, rpc, refresh, type Person, type PrivateProfile } from '../lib';
 import { Empty, Modal, initials, useAction, ActionStatus, Loading, ErrorBox } from '../components/UI';
 import { PersonEditor } from '../components/PersonEditor';
-export function Members(props:WorkspaceProps){
-  const [search,setSearch]=useState(''),[edit,setEdit]=useState<Person|undefined>(),[adding,setAdding]=useState(false),[detail,setDetail]=useState<Person|null>(null);
-  const shown=props.people.filter(p=>p.full_name.toLocaleLowerCase().includes(search.toLocaleLowerCase()));
-  return <div className="page-body"><div className="page-heading"><div><span className="eyebrow">THE PEOPLE WHO CONNECT US</span><h1>Family people</h1><p>A place for every person in your family’s story.</p></div><button className="primary" onClick={()=>setAdding(true)}><Plus size={17}/> Add a person</button></div><div className="toolbar people-toolbar"><label className="search"><Search size={18}/><input placeholder="Search by name…" value={search} onChange={e=>setSearch(e.target.value)}/></label><span className="muted">{shown.length} people</span></div>
-    <div className="people-grid">{shown.map(p=><button className="person-card" key={p.id} onClick={()=>setDetail(p)}><span className="person-avatar large-avatar">{initials(p.full_name)}</span><h3>{p.full_name}</h3><p>{p.linked_user_id===props.user.id?'Your verified record':p.linked_user_id?'Account connected':'Family record'}</p><div className="person-relations"><span>Father <strong>{props.people.find(x=>x.id===p.father_id)?.full_name||'Not linked'}</strong></span><span>Mother <strong>{props.people.find(x=>x.id===p.mother_id)?.full_name||'Not linked'}</strong></span></div><span className="node-id">Node {p.id.slice(0,8)}</span></button>)}</div>
-    {!shown.length&&<Empty title={search?'No matching people':'Your family directory starts here'}><p>{search?'Try another name.':'Add a person to begin connecting your family.'}</p></Empty>}
-    {(adding||edit)&&<PersonEditor {...props} person={edit} close={()=>{setAdding(false);setEdit(undefined);}}/>}
-    {detail&&<PersonDetails {...props} person={detail} close={()=>setDetail(null)} edit={()=>{setEdit(detail);setDetail(null);}}/>}
+export function Members(props: WorkspaceProps) {
+  const [search, setSearch] = useState('');
+  const [edit, setEdit] = useState<Person>();
+  const [adding, setAdding] = useState(false);
+  const [detail, setDetail] = useState<Person | null>(null);
+  const directory = useMemo(() => [...props.people].sort((a, b) => a.full_name.localeCompare(b.full_name)), [props.people]);
+  const names = useMemo(() => new Map(directory.map(person => [person.id, person.full_name])), [directory]);
+  const term = search.trim().toLocaleLowerCase();
+  const shown = directory.filter(person => person.full_name.toLocaleLowerCase().includes(term));
+  return <div className="page-body">
+    <div className="page-heading">
+      <div><span className="eyebrow">Family directory</span><h1>People</h1><p>Find a relative and open their family record.</p></div>
+      <button className="primary" onClick={() => setAdding(true)}><Plus size={17} aria-hidden="true"/> Add a person</button>
+    </div>
+    <div className="toolbar people-toolbar">
+      <label className="search"><Search size={18} aria-hidden="true"/>
+        <input type="search" aria-label="Search people by name" placeholder="Search by name" value={search} onChange={event => setSearch(event.target.value)}/>
+      </label>
+      <span className="muted" role="status">{shown.length} {shown.length === 1 ? 'person' : 'people'}</span>
+    </div>
+    <div className="people-grid">{shown.map(person => <button className="person-card" key={person.id} onClick={() => setDetail(person)}>
+      <div className="person-card-heading">
+        <span className="person-avatar" aria-hidden="true">{initials(person.full_name)}</span>
+        <div><h3>{person.full_name}</h3>
+          <p>{person.linked_user_id === props.user.id ? 'Your verified record' : person.linked_user_id ? 'Account connected' : 'Family record'}</p>
+        </div>
+        <ChevronRight size={17} aria-hidden="true"/>
+      </div>
+      {(person.father_id || person.mother_id) && <div className="person-relations">
+        {person.father_id && <span>Father <strong>{names.get(person.father_id) ?? 'Unknown'}</strong></span>}
+        {person.mother_id && <span>Mother <strong>{names.get(person.mother_id) ?? 'Unknown'}</strong></span>}
+      </div>}
+    </button>)}</div>
+    {!shown.length && <Empty title={term ? 'No matching people' : 'Your family directory starts here'}>
+      <p>{term ? 'Try another name.' : 'Add a person to begin connecting your family.'}</p>
+    </Empty>}
+    {(adding || edit) && <PersonEditor {...props} person={edit} close={() => { setAdding(false); setEdit(undefined); }}/>}
+    {detail && <PersonDetails {...props} person={detail} close={() => setDetail(null)} edit={() => { setEdit(detail); setDetail(null); }}/>}
   </div>;
 }
+
 export function PersonDetails({person,close,edit,focus,...props}:WorkspaceProps&{person:Person;close:()=>void;edit?:()=>void;focus?:(id:string)=>void}){
   const [editing,setEditing]=useState(false);const action=useAction();const key=useRef(crypto.randomUUID());
   const profile=useQuery({queryKey:['profile',props.family.id,person.id],queryFn:async()=>{const {data,error}=await db().from('member_private').select('*').eq('family_id',props.family.id).eq('member_id',person.id).maybeSingle();if(error)throw error;return data as PrivateProfile|null;}});
