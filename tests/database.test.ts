@@ -15,7 +15,7 @@ create table storage.objects(id uuid primary key default gen_random_uuid(),bucke
 create function storage.foldername(text) returns text[] language sql immutable as $$ select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1] $$;
 grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;
 `);
-for(const file of ['202611050001_schema.sql','202611050002_imports_storage.sql','202611050003_app.sql','202611060001_member_gender.sql']) await db.exec(await readFile(`${root}/supabase/migrations/${file}`,'utf8'));
+for(const file of ['202611050001_schema.sql','202611050002_imports_storage.sql','202611050003_app.sql','202611060001_member_gender.sql','202611060002_member_relationships.sql']) await db.exec(await readFile(`${root}/supabase/migrations/${file}`,'utf8'));
 const users={admin:'10000000-0000-4000-8000-000000000001', member:'10000000-0000-4000-8000-000000000002', other:'10000000-0000-4000-8000-000000000003',mod:'10000000-0000-4000-8000-000000000004'};
 for(const [name,id] of Object.entries(users)) await db.query(`insert into auth.users values($1,$2,now())`,[id,`${name}@example.test`]);
 async function actor(name){ await db.exec('reset role'); await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[users[name]]); await db.exec('set role authenticated'); }
@@ -80,6 +80,40 @@ await denied(()=>rpc('review_change',[cross,true,'']),'composite FK prevents cro
 await actor('member'); const claim=await rpc('submit_change',[family,child,'claim','{}',(await getMember(child)).version,'20000000-0000-4000-8000-000000000004']);
 await actor('admin');await rpc('review_change',[claim,true,'Identity verified']);
 await actor('member');assert.equal((await db.query('select * from public.member_private')).rows.length,1,'claimed user sees own profile');
+// Multiple relationships apply together, through the same approval gate.
+await actor('member');
+const spouse2=report.ids.dad2;
+const relationshipKey='20000000-0000-4000-8000-000000000013';
+const relationChange=await rpc('submit_change',[family,dad,'edit',JSON.stringify({
+ relationships:{spouse:[mom,spouse2],daughter:[child],adopted_child:[child]},
+}),(await getMember(dad)).version,relationshipKey]);
+assert.equal((await db.query('select * from public.member_relationships')).rows.length,0);
+await denied(()=>db.query("insert into public.member_relationships values($1,$2,$3,'son')",[family,dad,child]),'direct relationship writes blocked');
+await actor('admin');
+const momVersion=(await getMember(mom)).version;
+await rpc('review_change',[relationChange,true,'Verified relationships']);
+assert.equal((await db.query("select * from public.member_relationships where kind='spouse'")).rows.length,2);
+assert.equal((await db.query("select * from public.member_relationships where kind in ('daughter','adopted_child')")).rows.length,2);
+assert.equal((await getMember(mom)).version,momVersion+1,'reciprocal edit invalidates stale versions');
+const badSpouse=await rpc('submit_change',[family,child,'edit',JSON.stringify({
+ relationships:{spouse:[dad]},
+}),(await getMember(child)).version,'20000000-0000-4000-8000-000000000014']);
+await assert.rejects(()=>rpc('review_change',[badSpouse,true,'']),/generation conflict/);
+const badAdopt=await rpc('submit_change',[family,child,'edit',JSON.stringify({
+ relationships:{adopted_child:[spouse2]},
+}),(await getMember(child)).version,'20000000-0000-4000-8000-000000000015']);
+await assert.rejects(()=>rpc('review_change',[badAdopt,true,'']),/generation conflict/);
+const foreignLink=await rpc('submit_change',[family,dad,'edit',JSON.stringify({
+ relationships:{son:[foreignReport.ids.foreign]},
+}),(await getMember(dad)).version,'20000000-0000-4000-8000-000000000016']);
+await assert.rejects(()=>rpc('review_change',[foreignLink,true,'']),/foreign key/);
+await actor('other');assert.equal((await db.query('select * from public.member_relationships')).rows.length,0);
+await actor('admin');
+const unlink=await rpc('submit_change',[family,mom,'edit',JSON.stringify({
+ relationships:{spouse:[]},
+}),(await getMember(mom)).version,'20000000-0000-4000-8000-000000000017']);
+await rpc('review_change',[unlink,true,'Verified removal']);
+assert.equal((await db.query("select * from public.member_relationships where kind='spouse'")).rows.length,1);
 await actor('admin'); await rpc('transfer_admin',[family,users.mod]);
 await denied(()=>rpc('set_role',[family,users.member,'moderator']),'former admin loses powers immediately');
 await actor('mod');assert.equal((await db.query('select private.role_for($1) as r',[family])).rows[0].r,'admin');

@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { QueryClient } from '@tanstack/react-query';
 import { parseSupabaseConfig } from '@family-tree/core/config';
+import type { Relationship } from '@family-tree/core/relationships';
 import type { Gender } from '@family-tree/core/gender';
 import { familyApi } from '@family-tree/core/api';
 let stored: { url?: string; key?: string } = {};
@@ -43,5 +44,18 @@ export async function listFamilyPeople(familyId: string): Promise<Person[]> {
     people.push(...data as Person[]);
     if (data.length < pageSize) return people;
     after = data.at(-1)!.id;
+  }
+}
+
+export async function listFamilyRelationships(familyId: string): Promise<Relationship[]> {
+  const relationships: Relationship[] = [];
+  const pageSize = 500;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await db().from('member_relationships').select('source_id,target_id,kind')
+      .eq('family_id', familyId).order('source_id').order('target_id').order('kind')
+      .range(offset, offset + pageSize - 1);
+    if (error) throw error;
+    relationships.push(...data as Relationship[]);
+    if (data.length < pageSize) return relationships;
   }
 }

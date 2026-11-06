@@ -64,3 +64,64 @@ label{display:flex;flex-direction:column;gap:7px;color:#536c7e;font-size:11px;fo
   .offline-controls { padding: 16px; }
 }
 .explorer-context > select.branch-depth { width: auto; }
+
+.person-relationships { display: grid; gap: 8px; }
+.person-relationships h3, .person-relationships p { margin: 0; }
+.relationship-picker { border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+.relationship-picker summary { cursor: pointer; min-height: 44px; padding: 11px 12px; font-weight: 600; }
+.relationship-picker summary span { float: right; font-weight: 400; color: #516a7a; }
+.relationship-picker fieldset { min-width: 0; padding: 0 12px 12px; }
+.relationship-options { max-height: 210px; overflow: auto; }
+.relationship-options label { display: flex; flex-direction: row; align-items: center; min-height: 44px; gap: 10px; margin: 0; }
+.relationship-options input[type="checkbox"] { width: 18px; height: 18px; flex: none; }
+.relationship-options small { font-weight: 400; color: #516a7a; }
+.explorer .react-flow__handle { pointer-events: none; }
+.explorer .react-flow__handle-left, .explorer .react-flow__handle-right { opacity: 0; }
+
+/* The same canvas and controls are used in the full-screen preview. */
+dialog.explorer-dialog { position: relative; inset: auto; width: 100%; max-width: none; max-height: none; margin: 0; padding: 0; color: inherit; }
+dialog.explorer-dialog:not([open]) { display: none; }
+dialog.explorer-dialog:modal {
+  position: fixed; inset: 0; width: 100%; height: 100dvh;
+  border-radius: 0; border: 0; overscroll-behavior: contain;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+dialog.explorer-dialog:modal .tree-canvas { height: auto; min-height: 120px; flex: 1; }
+.fullscreen-heading { padding: 12px 20px 0; }
+.fullscreen-heading h2 { margin: 0; }
+.explorer-buttons { display: flex; gap: 8px; }
+.explorer-buttons button { white-space: nowrap; }
+.explorer-field-label { display: block; margin-bottom: 6px; font-size: 13px; font-weight: 600; }
+.generation-menu { position: relative; }
+.generation-menu summary {
+  display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 12px; cursor: pointer;
+  color: var(--ink); background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  font-size: 14px; white-space: nowrap; list-style: none;
+}
+.generation-menu summary::-webkit-details-marker { display: none; }
+.generation-menu summary::after { content: '▾'; }
+.generation-options {
+  position: absolute; top: calc(100% + 5px); left: 0; z-index: 12;
+  width: max(100%, 160px); max-width: 260px;
+  padding: 8px; background: #fff; border: 1px solid var(--line); border-radius: 8px;
+  box-shadow: 0 8px 22px #173b5826;
+}
+.generation-checkboxes { max-height: min(210px, 35dvh); overflow: auto; }
+.explorer-tools .generation-checkboxes label {
+  display: flex; align-items: center; gap: 10px; padding: 0 6px; min-height: 44px; cursor: pointer;
+}
+.explorer-tools .generation-checkboxes input { width: 18px; height: 18px; min-height: 0; flex: none; }
+.generation-actions { display: flex; justify-content: space-between; gap: 6px; padding-top: 5px; }
+.generation-actions button { min-height: 40px; }
+@media (max-width: 760px) {
+  .explorer-tools { grid-template-columns: minmax(0, 1fr) auto; }
+  .explorer-tools > label:first-child { grid-column: 1 / -1; }
+  .fullscreen-label { display: none; }
+  .explorer-buttons .explorer-view { min-width: 44px; justify-content: center; }
+  .explorer-context .segmented { max-width: 100%; }
+  .explorer-context .segmented button { padding-inline: 8px; }
+  dialog.explorer-dialog:modal .tree-footer { display: none; }
+}
+body:has(dialog.explorer-dialog:modal) { overflow: hidden; }
+dialog.explorer-dialog:modal > :not(.tree-canvas) { flex-shrink: 0; }

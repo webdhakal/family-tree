@@ -1,3 +1,4 @@
+import type { Relationship } from '@family-tree/core/relationships';
 import { connection } from './lib';
 import type { DiagramPerson } from './components/TreeExplorer';
 
@@ -12,6 +13,7 @@ export type OfflineCopy = {
   savedAt: number;
   expiresAt: number;
   people: DiagramPerson[];
+  relationships?: Relationship[];
 };
 
 export function readOfflineCopy(): OfflineCopy | null {
@@ -38,6 +40,6 @@ export function saveOfflineCopy(input: Omit<OfflineCopy, 'savedAt' | 'expiresAt'
   // Persist only diagram fields. No profile details, account links, or query data.
   const people = input.people.map(({ id, full_name, father_id, mother_id, gender }) =>
     ({ id, full_name, father_id, mother_id, gender: gender ?? null }));
-  localStorage.setItem(snapshotKey, JSON.stringify({ ...input, people, savedAt, expiresAt: savedAt + lifetime }));
+  localStorage.setItem(snapshotKey, JSON.stringify({ ...input, people, relationships: input.relationships?.map(({ source_id, target_id, kind }) => ({ source_id, target_id, kind })), savedAt, expiresAt: savedAt + lifetime }));
   window.dispatchEvent(new Event(snapshotEvent));
 }

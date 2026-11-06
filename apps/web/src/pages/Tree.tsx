@@ -22,14 +22,14 @@ export function Tree(props: WorkspaceProps & { error: unknown; loading: boolean 
         <h1>Family tree</h1>
         <p>{props.family.name} · {props.people.length} {props.people.length === 1 ? 'person' : 'people'}</p>
       </div>
-      <button className="primary" onClick={() => setAdd(true)}><Plus size={17}/> Add a person</button>
+      <button className="primary" disabled={props.loading || !!props.error} onClick={() => setAdd(true)}><Plus size={17}/> Add a person</button>
     </div>
     <ErrorBox error={props.error}/>
-    {props.loading ? <Loading/> : <TreeExplorer
-      key={branchKey} people={props.people} focus={selected?.id} onFocus={setFocus} onPerson={setDetails}
+    {props.loading ? <Loading/> : props.error ? null : <TreeExplorer
+      key={branchKey} people={props.people} relationships={props.relationships} focus={selected?.id} onFocus={setFocus} onPerson={setDetails}
       emptyAction={<button className="primary" onClick={() => setAdd(true)}>Add the first person</button>}
     />}
-    {!props.loading && !props.error && <OfflineControls family={props.family} people={props.people} userId={props.user.id}/>}
+    {!props.loading && !props.error && <OfflineControls family={props.family} people={props.people} relationships={props.relationships} userId={props.user.id}/>}
     {add && <PersonEditor {...props} close={() => setAdd(false)}/>}
     {details && <PersonDetails {...props} person={details} close={() => setDetails(null)}
       focus={id => { setFocus(id); setBranchKey(key => key + 1); setDetails(null); }}/>}

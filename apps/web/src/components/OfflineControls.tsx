@@ -1,10 +1,11 @@
+import type { Relationship } from '@family-tree/core/relationships';
 import { useEffect, useState } from 'react';
 import { Download, WifiOff } from 'lucide-react';
 import { clearOfflineCopy, readOfflineCopy, saveOfflineCopy, snapshotEvent, snapshotKey } from '../offline';
 import type { Family, Person } from '../lib';
 import { ActionStatus, useAction } from './UI';
 
-export function OfflineControls({ family, people, userId }: { family: Family; people: Person[]; userId: string }) {
+export function OfflineControls({ family, people, relationships, userId }: { family: Family; people: Person[]; relationships: Relationship[]; userId: string }) {
   const action = useAction();
   const [copy, setCopy] = useState(readOfflineCopy);
   const [ready, setReady] = useState(() => !!navigator.serviceWorker?.controller);
@@ -32,7 +33,7 @@ export function OfflineControls({ family, people, userId }: { family: Family; pe
     </div>
     <div className="button-row">
       <button className="secondary" disabled={!ready || !people.length || action.busy} onClick={() => void action.run(async () => {
-        saveOfflineCopy({ ownerId: userId, familyId: family.id, familyName: family.name, people });
+        saveOfflineCopy({ ownerId: userId, familyId: family.id, familyName: family.name, people, relationships });
       }, 'Family tree saved for offline viewing.')}><Download size={16}/> {saved ? 'Refresh offline copy' : 'Save for offline'}</button>
       {copy?.ownerId === userId && <button className="text-button" onClick={() => { clearOfflineCopy(); action.reset(); }}>Remove offline copy</button>}
     </div>

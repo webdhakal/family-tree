@@ -30,7 +30,7 @@ export default function OfflineWorkspace() {
       {copy && <button className="text-button" onClick={() => { clearOfflineCopy(); setCopy(null); setPerson(null); }}>Remove offline copy</button>}
     </div>
     </div>
-    {copy ? <TreeExplorer people={copy.people} focus={focus || copy.people[0]?.id} onFocus={setFocus} onPerson={setPerson}/>
+    {copy ? <TreeExplorer people={copy.people} relationships={copy.relationships} focus={focus || copy.people[0]?.id} onFocus={setFocus} onPerson={setPerson}/>
       : <Empty title="No saved family tree"><p>Reconnect and save a family tree for offline viewing.</p></Empty>}
     {person && copy && <Modal title={person.full_name} close={() => setPerson(null)}>
       <dl className="detail-list">
