@@ -1,28 +1,37 @@
-import { useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { ReactFlow, Background, Controls, MiniMap, Position } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { Network, Users, GitBranch, Plus, Search, List, ArrowUpRight, CheckCircle2 } from 'lucide-react';
-import { layoutMembers, NODE_WIDTH, NODE_HEIGHT } from '@family-tree/core/layout';
-import { api, selectRows, type Person } from '../lib';
+import { useState } from 'react';
+import { Plus } from 'lucide-react';
+import type { Person } from '../lib';
 import type { WorkspaceProps } from '../components/Shell';
-import { Empty, ErrorBox, Loading, initials } from '../components/UI';
+import { ErrorBox, Loading } from '../components/UI';
 import { PersonEditor } from '../components/PersonEditor';
+import { TreeExplorer } from '../components/TreeExplorer';
+import { OfflineControls } from '../components/OfflineControls';
 import { PersonDetails } from './Members';
-export function Tree(props:WorkspaceProps&{error:unknown;loading:boolean}){
-  const [focus,setFocus]=useState(''),[direction,setDirection]=useState<'ancestors'|'descendants'>('ancestors'),[depth,setDepth]=useState(4),[add,setAdd]=useState(false),[details,setDetails]=useState<Person|null>(null),[list,setList]=useState(false);
-  const me=props.people.find(p=>p.linked_user_id===props.user.id);const selected=props.people.find(p=>p.id===focus)||me||props.people[0];
-  const query=useQuery({queryKey:['tree',props.family.id,selected?.id,direction,depth],enabled:!!selected,queryFn:()=>direction==='ancestors'?api!.ancestors(props.family.id,selected!.id,depth):api!.descendants(props.family.id,selected!.id,depth)});
-  const pending=useQuery({queryKey:['pending-list',props.family.id],queryFn:()=>selectRows<{status:string}>('pending_changes',props.family.id)});
-  const roots=props.people.filter(p=>!p.father_id&&!p.mother_id).length;
-  const layout=useMemo(()=>layoutMembers(query.data||[]),[query.data]);
-  const nodes=useMemo(()=>layout.nodes.map(m=>({id:m.id,position:{x:m.x,y:m.y},data:{label:<div className="tree-person"><span className={`person-avatar ${m.id===selected?.id?'focus-avatar':''}`}>{initials(m.full_name)}</span><div><strong>{m.full_name}</strong><span>{m.id===me?.id?'You':m.id===selected?.id?'Selected person':'Family member'}</span></div></div>},sourcePosition:Position.Bottom,targetPosition:Position.Top,style:{width:NODE_WIDTH,height:NODE_HEIGHT,border:m.id===selected?.id?'2px solid #326c99':'1px solid #dce5ec',borderRadius:12,padding:10,background:'#fff',boxShadow:'0 4px 14px #173b5808'}})),[layout,selected?.id,me?.id]);
-  return <div className="page-body"><div className="page-heading"><div><span className="eyebrow">CONNECTED THROUGH GENERATIONS</span><h1>Family tree</h1><p>Explore the people and connections that make you family.</p></div><button className="primary" onClick={()=>setAdd(true)}><Plus size={17}/> Add a person</button></div>
-    <div className="stat-strip"><div className="stat"><span className="stat-icon"><Users/></span><div><strong>{props.people.length}</strong><span>Family members</span></div></div><div className="stat"><span className="stat-icon"><GitBranch/></span><div><strong>{roots}</strong><span>Root ancestors</span></div></div><div className="stat"><span className="stat-icon"><CheckCircle2/></span><div><strong>{pending.data?.filter(p=>p.status==='pending').length||0}</strong><span>Awaiting verification</span></div></div><div className="stat stat-note"><Network size={26}/><span>Every person has a place.<br/>Every connection matters.</span></div></div>
-    <ErrorBox error={props.error}/><div className="tree-workspace"><section className="tree-panel"><div className="toolbar"><label className="search"><Search size={17}/><select aria-label="Focus on a person" value={selected?.id||''} onChange={e=>setFocus(e.target.value)}><option disabled value="">Find a family member</option>{props.people.map(p=><option key={p.id} value={p.id}>{p.full_name}</option>)}</select></label><div className="segmented"><button className={direction==='ancestors'?'selected':''} onClick={()=>setDirection('ancestors')}>Ancestors</button><button className={direction==='descendants'?'selected':''} onClick={()=>setDirection('descendants')}>Descendants</button></div><select aria-label="Generations" value={depth} onChange={e=>setDepth(Number(e.target.value))}>{[2,3,4,5,6,7,8].map(n=><option key={n} value={n}>{n} generations</option>)}</select><button className={`icon-button ${list?'selected':''}`} aria-label="Toggle accessible list view" onClick={()=>setList(!list)}><List size={20}/></button></div>
-      <div className="tree-canvas">{props.loading?<Loading/>:!selected?<Empty title="Let your family story take root"><p>Add the first person, or import your existing family records.</p><button className="primary" onClick={()=>setAdd(true)}><Plus size={16}/> Add the first person</button></Empty>:query.isPending?<Loading text="Connecting the generations…"/>:query.error?<ErrorBox error={query.error}/>:list?<div className="tree-list">{query.data?.map(p=><button key={p.id} onClick={()=>setDetails(props.people.find(x=>x.id===p.id)!)}><span className="person-avatar">{initials(p.full_name)}</span><span>{p.full_name}</span><span className="muted">Generation {p.generation}</span></button>)}</div>:<ReactFlow key={`${selected.id}:${direction}`} nodes={nodes} edges={layout.edges.map(e=>({...e,type:'smoothstep',style:{stroke:e.kind==='father'?'#90a9bd':'#aabdb3',strokeWidth:1.7}}))} fitView minZoom={0.12} maxZoom={1.5} nodesDraggable={false} nodesConnectable={false} onNodeClick={(_,node)=>setDetails(props.people.find(x=>x.id===node.id)!)}><Background color="#b7c8d5" gap={22} size={1}/><Controls showInteractive={false}/><MiniMap nodeColor="#b9d0e2" maskColor="#f4f7fa99"/></ReactFlow>}</div>
-      <footer className="tree-footer"><span><i className="legend-dot"/> Verified family connections</span><span>Scroll to zoom · Drag to explore · Select a person</span></footer></section>
-    <aside className="tree-sidebar"><span className="eyebrow">YOUR FAMILY AT A GLANCE</span><h2>A growing story</h2><p>Your tree brings different generations into one shared view.</p><div className="generation-card"><GitBranch size={26}/><strong>{props.family.name}</strong><span>{props.people.length} people, connected</span></div><h3>Recently added</h3>{props.people.slice(-5).reverse().map(p=><button className="recent-person" key={p.id} onClick={()=>setDetails(p)}><span className="person-avatar small-avatar">{initials(p.full_name)}</span><span><strong>{p.full_name}</strong><small>{p.linked_user_id?'Account connected':'Family record'}</small></span><ArrowUpRight size={15}/></button>)}{!props.people.length&&<p className="muted">Your first family members will appear here.</p>}<div className="sidebar-tip"><strong>Start with what you know</strong><p>Missing a connection? Add a record or suggest a parent. Your family reviewers help keep the tree accurate.</p></div></aside></div>
-    {add&&<PersonEditor {...props} close={()=>setAdd(false)}/>} {details&&<PersonDetails {...props} person={details} close={()=>setDetails(null)} focus={id=>{setFocus(id);setDetails(null);}}/>}
+
+export function Tree(props: WorkspaceProps & { error: unknown; loading: boolean }) {
+  const [focus, setFocus] = useState('');
+  const [branchKey, setBranchKey] = useState(0);
+  const [add, setAdd] = useState(false);
+  const [details, setDetails] = useState<Person | null>(null);
+  const me = props.people.find(person => person.linked_user_id === props.user.id);
+  const selected = props.people.find(person => person.id === focus) ?? me ?? props.people[0];
+  return <div className="page-body tree-page">
+    <div className="page-heading">
+      <div>
+        <span className="eyebrow">FAMILY EXPLORER</span>
+        <h1>Family tree</h1>
+        <p>{props.family.name} · {props.people.length} {props.people.length === 1 ? 'person' : 'people'}</p>
+      </div>
+      <button className="primary" onClick={() => setAdd(true)}><Plus size={17}/> Add a person</button>
+    </div>
+    <ErrorBox error={props.error}/>
+    {props.loading ? <Loading/> : <TreeExplorer
+      key={branchKey} people={props.people} focus={selected?.id} onFocus={setFocus} onPerson={setDetails}
+      emptyAction={<button className="primary" onClick={() => setAdd(true)}>Add the first person</button>}
+    />}
+    {!props.loading && !props.error && <OfflineControls family={props.family} people={props.people} userId={props.user.id}/>}
+    {add && <PersonEditor {...props} close={() => setAdd(false)}/>}
+    {details && <PersonDetails {...props} person={details} close={() => setDetails(null)}
+      focus={id => { setFocus(id); setBranchKey(key => key + 1); setDetails(null); }}/>}
   </div>;
 }

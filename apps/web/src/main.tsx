@@ -5,3 +5,9 @@ import App from './App';
 import { queryClient } from './lib';
 import './style.css';
 ReactDOM.createRoot(document.getElementById('root')!).render(<React.StrictMode><QueryClientProvider client={queryClient}><App/></QueryClientProvider></React.StrictMode>);
+
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  void navigator.serviceWorker.register('/sw.js').catch(error => {
+    console.warn('Offline app could not be installed', error);
+  });
+}

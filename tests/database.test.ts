@@ -15,7 +15,7 @@ create table storage.objects(id uuid primary key default gen_random_uuid(),bucke
 create function storage.foldername(text) returns text[] language sql immutable as $$ select (string_to_array($1,'/'))[1:array_length(string_to_array($1,'/'),1)-1] $$;
 grant usage on schema storage to authenticated; grant select,insert,delete on storage.objects to authenticated;
 `);
-for(const file of ['202611050001_schema.sql','202611050002_imports_storage.sql','202611050003_app.sql']) await db.exec(await readFile(`${root}/supabase/migrations/${file}`,'utf8'));
+for(const file of ['202611050001_schema.sql','202611050002_imports_storage.sql','202611050003_app.sql','202611060001_member_gender.sql']) await db.exec(await readFile(`${root}/supabase/migrations/${file}`,'utf8'));
 const users={admin:'10000000-0000-4000-8000-000000000001', member:'10000000-0000-4000-8000-000000000002', other:'10000000-0000-4000-8000-000000000003',mod:'10000000-0000-4000-8000-000000000004'};
 for(const [name,id] of Object.entries(users)) await db.query(`insert into auth.users values($1,$2,now())`,[id,`${name}@example.test`]);
 async function actor(name){ await db.exec('reset role'); await db.query(`select set_config('request.jwt.claim.sub',$1,false)`,[users[name]]); await db.exec('set role authenticated'); }
@@ -33,7 +33,7 @@ for(const name of ['member','mod']) {
  await denied(()=>rpc('accept_invitation',[token]),'invitation reuse denied');await actor('admin');
 }
 await rpc('set_role',[family,users.mod,'moderator']);
-const payload=[{record_id:'child',full_name:'Asha Example',father_name:'Ram Example',mother_record_id:'mom',profile:{phone:'+977000',social_links:{},extra_fields:{}}},
+const payload=[{record_id:'child',full_name:'Asha Example',gender:'female',father_name:'Ram Example',mother_record_id:'mom',profile:{phone:'+977000',social_links:{},extra_fields:{}}},
  {record_id:'dad1',full_name:'Ram Example'}, {record_id:'dad2',full_name:'Ram Example'}, {record_id:'mom',full_name:'Maya Example'}];
 const key='20000000-0000-4000-8000-000000000001';
 const batch=await rpc('stage_import',[family,JSON.stringify(payload),key]);
@@ -43,6 +43,7 @@ const report=await rpc('review_import',[batch,true]); assert.equal(report.create
 assert.deepEqual(await rpc('review_import',[batch,true]),report);
 const child=report.ids.child, dad=report.ids.dad1, mom=report.ids.mom;
 const getMember=async id=>(await db.query('select * from public.members where id=$1',[id])).rows[0];
+assert.equal((await getMember(child)).gender,'female');
 assert.equal((await getMember(child)).mother_id,mom);assert.equal((await getMember(child)).father_id,null);
 await actor('member');
 assert.equal((await db.query('select * from public.member_private')).rows.length,0,'private profile hidden before claim');
@@ -60,6 +61,12 @@ await denied(()=>rpc('review_change',[change,true,'']), 'member cannot approve')
 await actor('mod');await rpc('review_change',[change,true,'Verified']);
 assert.equal((await getMember(child)).father_id,dad);
 assert.equal((await db.query('select * from public.import_issues where resolved_at is null')).rows.length,0);
+await denied(async()=>rpc('submit_change',[family,child,'edit',JSON.stringify({gender:'invalid'}),(await getMember(child)).version,'20000000-0000-4000-8000-000000000011']),'invalid gender is rejected');
+const genderChange=await rpc('submit_change',[family,child,'edit',JSON.stringify({gender:'non_binary'}),(await getMember(child)).version,'20000000-0000-4000-8000-000000000012']);
+assert.equal((await getMember(child)).gender,'female','submitted gender is not immediately applied');
+await actor('admin');await rpc('review_change',[genderChange,true,'Verified gender']);
+assert.equal((await getMember(child)).gender,'non_binary');
+await actor('mod');
 const own=await rpc('submit_change',[family,dad,'edit',JSON.stringify({full_name:'Ram Example'}),(await getMember(dad)).version,key]);
 await denied(()=>rpc('review_change',[own,true,'']), 'moderator self-review denied');
 await actor('admin');await rpc('review_change',[own,true,'']);

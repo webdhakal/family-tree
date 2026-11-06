@@ -1,7 +1,8 @@
 import Papa from 'papaparse';
+import { parseGender, type Gender } from './gender';
 
 export type ImportRow = {
-  record_id: string; full_name: string; father_name: string | null; mother_name: string | null;
+  record_id: string; full_name: string; gender?: Gender; father_name: string | null; mother_name: string | null;
   father_record_id: string | null; mother_record_id: string | null;
   custom_fields: Record<string, string>;
   profile: {
@@ -11,7 +12,7 @@ export type ImportRow = {
   };
 };
 const mapped = new Set([
-  'Full Name', 'Address', 'Street Address', 'Original Address', "Father's Name", "Mother's Name",
+  'Full Name', 'Gender', 'Address', 'Street Address', 'Original Address', "Father's Name", "Mother's Name",
   'DOB', 'Phone', 'Email', 'Social Links', 'Map URL', 'Record ID', 'Father Record ID', 'Mother Record ID',
 ]);
 function https(value: string, label: string) {
@@ -55,7 +56,9 @@ export function parseFamilyCsv(text: string): ImportRow[] {
     }
     // Unknown columns are private by default; promotion to lineage metadata needs registry review.
     const extra = Object.fromEntries(Object.entries(row).filter(([key]) => !mapped.has(key)));
+    const gender = parseGender(read('Gender'));
     return {
+      ...(gender ? { gender } : {}),
       record_id: recordId, full_name: name, father_name: read("Father's Name"), mother_name: read("Mother's Name"),
       father_record_id: read('Father Record ID'), mother_record_id: read('Mother Record ID'), custom_fields: {},
       profile: {

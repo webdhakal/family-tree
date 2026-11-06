@@ -1,4 +1,4 @@
-Record ID,Full Name,Address,Street Address,Original Address,Father's Name,Mother's Name,DOB,Phone,Email,Social Links,Map URL,Father Record ID,Mother Record ID,Gotra
-child,Asha Example,Kathmandu,Ward 1,Pokhara,Ram Example,Maya Example,2001-03-12,+9779800000000,asha@example.invalid,"{""Facebook"":""https://www.facebook.com/example""}",https://maps.google.com/?q=Kathmandu,father,mother,Example
-father,Ram Example,,,Pokhara,,,1970-04-20,,,,,,,Example
-mother,Maya Example,,,Lalitpur,,,1974-09-02,,,,,,,Example
+Record ID,Full Name,Address,Street Address,Original Address,Father's Name,Mother's Name,DOB,Phone,Email,Social Links,Map URL,Father Record ID,Mother Record ID,Gotra,Gender
+child,Asha Example,Kathmandu,Ward 1,Pokhara,Ram Example,Maya Example,2001-03-12,+9779800000000,asha@example.invalid,"{""Facebook"":""https://www.facebook.com/example""}",https://maps.google.com/?q=Kathmandu,father,mother,Example,Female
+father,Ram Example,,,Pokhara,,,1970-04-20,,,,,,,Example,Male
+mother,Maya Example,,,Lalitpur,,,1974-09-02,,,,,,,Example,Female

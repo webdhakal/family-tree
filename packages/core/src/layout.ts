@@ -1,7 +1,7 @@
 import dagre from '@dagrejs/dagre';
-import type { Member } from './api';
+import type { TreeRecord } from './generations';
 export const NODE_WIDTH = 208, NODE_HEIGHT = 72;
-export function layoutMembers(members: Member[]) {
+export function layoutMembers<T extends TreeRecord>(members: T[]) {
   const graph = new dagre.graphlib.Graph({ multigraph: true });
   graph.setGraph({ rankdir: 'TB', nodesep: 32, ranksep: 64 });
   graph.setDefaultEdgeLabel(() => ({}));

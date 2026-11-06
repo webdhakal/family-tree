@@ -1,20 +1,40 @@
-import { lazy, Suspense, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { Session } from '@supabase/supabase-js';
 import { Plus, ArrowRight, MailCheck } from 'lucide-react';
+import { clearOfflineCopy, readOfflineCopy } from './offline';
 import { Auth, ConnectionSetup, PasswordRecovery } from './components/Auth';
 import { Loading, ErrorBox, Mark, useAction, ActionStatus } from './components/UI';
 const SystemPage = lazy(() => import('./pages/Settings').then(m => ({ default: m.SystemPage })));
 const Shell = lazy(() => import('./components/Shell').then(m => ({ default: m.Shell })));
 import { supabase, connection, queryClient, selectRows, rpc, refresh, type Family } from './lib';
+const OfflineWorkspace = lazy(() => import('./pages/OfflineWorkspace'));
+
+function subscribeConnectivity(notify: () => void) {
+  window.addEventListener('online', notify);
+  window.addEventListener('offline', notify);
+  return () => {
+    window.removeEventListener('online', notify);
+    window.removeEventListener('offline', notify);
+  };
+}
+
 export default function App() {
+  const online = useSyncExternalStore(subscribeConnectivity, () => navigator.onLine);
+  if (!online || document.documentElement.hasAttribute('data-offline-shell')) return <Suspense fallback={<Loading/>}><OfflineWorkspace/></Suspense>;
+  return <OnlineApp/>;
+}
+
+function OnlineApp() {
   const [session,setSession]=useState<Session|null>(null),[loading,setLoading]=useState(true),[recovery,setRecovery]=useState(false);
   const lastUser=useRef<string|null>(null);
   useEffect(()=>{
     if(!supabase){setLoading(false);return;}
     let active=true;
     void supabase.auth.getSession().then(({data})=>{if(active){setSession(data.session);setLoading(false);}});
-    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,next)=>{if(event==='SIGNED_OUT'||lastUser.current!==next?.user.id){queryClient.clear();}lastUser.current=next?.user.id||null;if(event==='PASSWORD_RECOVERY')setRecovery(true);setSession(next);setLoading(false);});
+    const {data:{subscription}}=supabase.auth.onAuthStateChange((event,next)=>{if(event==='SIGNED_OUT'||lastUser.current!==next?.user.id){queryClient.clear();}
+      const copy = readOfflineCopy();
+      if (event==='SIGNED_OUT' || (next && copy && copy.ownerId!==next.user.id)) clearOfflineCopy();lastUser.current=next?.user.id||null;if(event==='PASSWORD_RECOVERY')setRecovery(true);setSession(next);setLoading(false);});
     return()=>{active=false;subscription.unsubscribe();};
   },[]);
   if(!connection.configured)return <ConnectionSetup/>;
@@ -30,6 +50,12 @@ function Workspace({session}:{session:Session}) {
   const families=useQuery({queryKey:['families',userId],queryFn:()=>selectRows<Family>('families')});
   const memberships=useQuery({queryKey:['my-roles',userId],queryFn:async()=>{const {data,error}=await supabase!.from('user_roles').select('*').eq('user_id',userId);if(error)throw error;return data as {family_id:string;role:'moderator'|'member'}[];}});
   const global=useQuery({queryKey:['global-admin',userId],queryFn:()=>rpc<boolean>('global_admin_status',{})});
+  useEffect(() => {
+    if (!families.isSuccess || !memberships.isSuccess) return;
+    const copy = readOfflineCopy();
+    if (copy?.ownerId === userId && (!families.data.some(family => family.id === copy.familyId && !family.suspended) ||
+        !memberships.data.some(role => role.family_id === copy.familyId))) clearOfflineCopy();
+  }, [families.isSuccess, families.data, memberships.isSuccess, memberships.data, userId]);
   if(families.isPending||memberships.isPending)return <Loading/>;
   if(families.error||memberships.error)return <div className="setup-page"><div className="setup-card"><Mark/><h1>Finish database setup</h1><p>The application connected, but the family workspace could not load. Apply the migrations from this repository to your Supabase project.</p><ErrorBox error={families.error||memberships.error}/><button onClick={()=>void refresh()} className="primary">Try again</button><button className="text-button" onClick={()=>void supabase!.auth.signOut()}>Sign out</button></div></div>;
   const own=(families.data||[]).filter(f=>memberships.data?.some(r=>r.family_id===f.id));

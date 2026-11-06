@@ -23,6 +23,16 @@ npm run check # Strict shared/web TypeScript checks
 npm run build # Production app in apps/web/dist
 ```
 
+## Generation search and offline access
+
+The earliest recorded ancestors are generation 1. Each person's number is one more than the highest number among their known parents. Search by name, by generation, or by both. The diagram keeps all matching people together with their ancestor links. Unrecorded parents do not prevent a person from appearing, and numbers can change when earlier ancestors are linked.
+
+Gender is optional on family records and in the `Gender` CSV column. On an existing Supabase project, apply [the additive gender migration](supabase/migrations/202611060001_member_gender.sql) before deploying this release.
+
+Open the production site and choose **Install** or **Add to Home Screen** from the browser menu. In the family tree, choose **Save for offline** on a trusted device. One read-only copy is stored per project on that device for up to 24 hours. It includes the family name, people’s names, gender and parent links. Use **Refresh offline copy** to save current data. **Remove offline copy** and sign-out clear the copy. Access changes made on the server cannot reach an offline device until it reconnects.
+
+The service worker precaches the versioned application shell and bundled files. It does not cache Supabase requests, sign-in responses, private profile fields, or edits. The offline copy is kept separately in browser storage. A production build on HTTPS or localhost is needed to test the service worker.
+
 ## Repository layout
 
 - `apps/web`: working Vite/React/Tailwind application.
